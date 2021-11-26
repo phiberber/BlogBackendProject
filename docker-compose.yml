@@ -1,0 +1,75 @@
+version: "3.9"
+
+networks:
+  main:
+
+services:
+
+  backend:
+    tty: true
+    container_name: backend
+    image: python:3.6
+    build: .
+    command: python3 ./manage.py runserver 0.0.0.0:8000
+    restart: always
+    working_dir: /project
+    depends_on:
+      - migration
+    networks:
+      - main
+    expose:
+      - '8000'
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/project
+  
+  migration:
+    tty: true
+    container_name: migration
+    image: python:3.6
+    build: .
+    command: python3 ./manage.py migrate
+    working_dir: /project
+    depends_on:
+      - make_migrations
+    networks:
+      - main
+    volumes:
+      - .:/project
+
+  make_migrations:
+    tty: true
+    container_name: make_migrations
+    image: python:3.6
+    build: .
+    command: python3 ./manage.py makemigrations
+    working_dir: /project
+    depends_on:
+      - db
+    links:
+      - db
+    networks:
+      - main
+    volumes:
+      - .:/project
+
+  db:
+    container_name: db
+    image: mysql:latest
+    command: "mysqld --default-authentication-plugin=mysql_native_password --init-file /project/init.sql"
+    restart: always
+    environment:
+     MYSQL_ROOT_PASSWORD: pass
+     MYSQL_DATABASE: blog
+     MYSQL_USER: blog
+     MYSQL_PASSWORD: test
+    networks:
+      - main
+    expose:
+      - 3306
+    ports:
+      - "3306:3306"
+      - "33060:33060"
+    volumes:
+      - ./db/init.sql:/project/init.sql
